@@ -36,10 +36,37 @@ module debounce_edge_detect #(
 
     parameter CYCLES = (CLK_FREQ_HZ * STABLE_TIME_MS) / 1000;
 
+    //$clog - ceiling of log base 2
+    logic [$clog2(CYCLES)-1:0] counter;
+
+    always_ff @( posedge clk, negedge rst_n ) begin
+
+        if (!rst_n) begin
+            counter <= '0;
+            sig_debounced <= 0;
+        end
+        else begin
+            if ( s2 == sig_debounced ) begin
+                counter <= '0;
+            end
+            else begin
+                counter <= counter+1;
+            end
+
+        end
+
+        if (counter == CYCLES-1) begin
+            sig_debounced <= s2;
+            counter <= 0;
+        end
 
 
-    assign sig_debounced = 1'b0;
-    assign edge_rise      = 1'b0;
-    assign edge_fall      = 1'b0;
+    end
+
+
+
+    // assign sig_debounced = 1'b0;
+    // assign edge_rise      = 1'b0;
+    // assign edge_fall      = 1'b0;
 
 endmodule
