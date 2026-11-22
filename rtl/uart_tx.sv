@@ -34,14 +34,16 @@ module uart_tx #(
     
     state current_state, next_state;
 
-    logic [8:0]bit_counter;
+    logic [$clog2(CLKS_PER_BIT)-1:0]bit_counter;
     logic [2:0]bit_index;
+    logic [7:0]tx_data_q;
 
-    always_comb begin :
+    always_comb begin 
+        
         tx_ready = 1'b0;
         next_state = current_state;
         
-        case(state)
+        case(current_state)
             
             IDLE: begin
                 tx_ready = 1'b1;
@@ -72,9 +74,74 @@ module uart_tx #(
         
     end
     
-    always_ff @( posedge clk, negedge rst_n ) begin :
-        
 
+    always_ff @( posedge clk, negedge rst_n ) begin 
+        
+        if(!rst_n) begin
+            
+            current_state <= IDLE;
+            bit_counter <= '0;
+            bit_index <= '0;
+            txd <= 1;
+        
+        end
+        
+        else begin
+            
+            current_state <= next_state;
+
+            case(current_state)
+
+                IDLE: begin
+                    
+                    txd <= 1;
+                    bit_counter <= '0;
+                    bit_index <= '0;
+
+                    //saving data in IDLE to prevent it from changing during transmission
+                    if(tx_ready==1 && tx_valid==1) begin
+                        tx_data_q <= tx_data;
+                    end
+
+                end
+
+                START: begin
+                    
+                    txd <= 0;
+                    bit_counter <= bit_counter+1;
+
+                    if(bit_counter==CLKS_PER_BIT-1) begin
+                        bit_counter <= '0;
+                    end
+                
+                end
+
+                DATA: begin
+                    
+                    txd <= tx_data_q[bit_index];
+                    bit_counter <= bit_counter+1;
+                    
+                    if(bit_counter==CLKS_PER_BIT-1) begin
+                        bit_index <= bit_index+1;
+                        bit_counter <= '0;
+                    end
+                
+                end
+
+                STOP: begin
+                    
+                    txd <= 1;
+                    bit_counter <= bit_counter+1;
+                    
+                    if(bit_counter==CLKS_PER_BIT-1) begin
+                        bit_counter <= '0;
+                    end
+                
+                end
+
+            endcase
+
+        end
         
     end
     
