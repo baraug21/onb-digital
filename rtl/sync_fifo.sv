@@ -28,8 +28,8 @@ module sync_fifo #(
     // TODO:
     // 1. Declare the RAM memory array: logic [DATA_WIDTH-1:0] mem [0:DEPTH-1]; DONE
     // 2. Implement write (wr_ptr) and read (rd_ptr) pointers. DONE
-    // 3. Implement an occupancy counter.
-    // 4. Calculate flags: empty, full, almost_empty, almost_full.
+    // 3. Implement an occupancy counter. DONE
+    // 4. Calculate flags: empty, full, almost_empty, almost_full. DONE
     // 5. Handle simultaneous read and write.
 
     logic [DATA_WIDTH-1:0] mem [0:DEPTH-1];
@@ -41,30 +41,39 @@ module sync_fifo #(
         if(!rst_n) begin
             wr_ptr <= '0;
             rd_ptr <= '0;
+            occupancy <= '0;
         end
         else begin
             if(wr_en == 1 && full == 0) begin
                 if(wr_ptr<DEPTH-1) begin
                     wr_ptr <= wr_ptr+1;
+                    occupancy <= occupancy+1;
                 end
                 else begin
                     wr_ptr <= 0;
+                    occupancy <= occupancy+1;
                 end
             end
 
             if(rd_en == 1 && empty == 0) begin
                 if(rd_ptr<DEPTH-1) begin
                     rd_ptr <= rd_ptr+1;
+                    occupancy <= occupancy-1;
                 end
                 else begin
                     rd_ptr <= 0;
+                    occupancy <= occupancy-1;
                 end
-            end
+            end     
            
         end
     end
 
+    assign full = (occupancy==DEPTH) ? 1'b1 : 1'b0;
+    assign almost_full = (occupancy>=ALMOST_FULL_THRESH && occupancy!=DEPTH) ? 1'b1 : 1'b0;
 
+    assign empty = (occupancy==0) ? 1'b1 : 1'b0;
+    assign almost_empty = (occupancy<=ALMOST_EMPTY_THRESH) ? 1'b1 : 1'b0;
 
     // assign full         = 1'b0;
     // assign almost_full  = 1'b0;
